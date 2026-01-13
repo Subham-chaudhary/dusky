@@ -61,9 +61,9 @@ The setup scripts are written to auto detect your hardware and set the appropria
 
 # Installation 💿
 
-[Tutorial][video]
+[Watch Video Tutorial][video]
 
-[Tutorial]: https://youtu.be/OzeFAY_8T8Y
+[Watch Video Tutorial]: https://youtu.be/OzeFAY_8T8Y
 
 **Best for:** Users who already have a fresh, unconfigured Arch Linux installation with Hyprland, set up either via the archinstall script or through a manual install. If you have not installed yet, use the Arch ISO and ensure you select Btrfs as the filesystem and Hyprland as the window manager.
 
