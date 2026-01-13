@@ -16,6 +16,7 @@ readonly DOTFILES_GIT_DIR="${HOME}/dusky"
 readonly WORK_TREE="${HOME}"
 readonly BACKUP_NAME="recovery-backup-$(date +%s)"
 readonly BRANCH="main"
+readonly REPO_URL="https://github.com/dusklinux/dusky"
 
 # ------------------------------------------------------------------------------
 # VISUALS & LOGGING
@@ -133,8 +134,6 @@ log "STEP 2" "Applying git configuration fixes..."
 dotgit config status.showUntrackedFiles no
 
 # Fix 2: Handle Sparse Checkout (CRITICAL FIX FOR set -e)
-# We use || echo "false" because git config returns exit code 1 if key is missing,
-# which would crash the script under set -e.
 SC_STATUS=$(dotgit config --get core.sparseCheckout || echo "false")
 
 if [[ "$SC_STATUS" == "true" ]]; then
@@ -151,13 +150,18 @@ fi
 # ------------------------------------------------------------------------------
 log "STEP 3" "Fetching latest data from GitHub..."
 
+# We fetch explicitly to FETCH_HEAD to avoid ambiguity with local branch mappings
 if ! dotgit fetch origin "$BRANCH"; then
     err "Failed to fetch from GitHub. Check your internet connection."
     exit 1
 fi
 
 log "STEP 3" "Forcing repository reset (Repairing missing files)..."
-if dotgit reset --hard "origin/${BRANCH}"; then
+
+# CRITICAL FIX: Reset to FETCH_HEAD instead of origin/main
+# origin/main might not exist if the refspec mapping is broken, but FETCH_HEAD
+# is guaranteed to exist after a successful fetch.
+if dotgit reset --hard FETCH_HEAD; then
     log "OK" "Repository is now identical to GitHub."
 else
     err "Reset failed. Check file permissions in $WORK_TREE"
