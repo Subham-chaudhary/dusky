@@ -32,9 +32,22 @@ declare -r BRANCH="main"
 # Map specific scripts to custom paths relative to ${HOME}.
 # If a script in UPDATE_SEQUENCE matches a key here, this path is used.
 # Format: ["script_name.sh"]="path/from/home/script_name.sh"
+
+# ⚠️ IMPORTANT INSTRUCTIONS:
+# 1. DEFINITION ONLY: This array ONLY maps the script name to a custom file location.
+#    Adding a script here DOES NOT cause it to run automatically.
+#
+# 2. EXECUTION REQUIRED: To actually run the script, you MUST also add it to the
+#    'UPDATE_SEQUENCE' list further down in this file.
+#
+# Format: ["script_name.sh"]="path/relative/to/home/script_name.sh"
+
 declare -A CUSTOM_SCRIPT_PATHS=(
     # Example:
-    # ["099_my_custom_script.sh"]="myscripts/special/099_my_custom_script.sh"
+    # ["warp_toggle.sh"]="user_scripts/networking/warp_toggle.sh"
+    # Then in UPDATE_SEQUENCE add: "S | warp_toggle.sh"
+
+    ["warp_toggle.sh"]="user_scripts/networking/warp_toggle.sh"
 )
 
 # Centralized timestamp (Separate declaration for SC2155 compliance)
@@ -244,6 +257,7 @@ declare -ra UPDATE_SEQUENCE=(
     "U | 084_package_removal.sh --auto"
     "U | 085_wayclick_reset.sh"
     "U | 086_generate_colorfiles_for_current_wallpaer.sh"
+    "U | warp_toggle.sh --disconnect"
 )
 
 # ------------------------------------------------------------------------------
