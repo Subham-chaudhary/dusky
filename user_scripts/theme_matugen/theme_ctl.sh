@@ -47,7 +47,7 @@ MATUGEN_CONTRAST=""
 _TEMP_FILE=""
 
 cleanup() {
-    [[ -n "$_TEMP_FILE" && -e "$_TEMP_FILE" ]] && rm -f "$_TEMP_FILE"
+    [[ -n "$_TEMP_FILE" && -e "$_TEMP_FILE" ]] && rm -f "$_TEMP_FILE" || true
 }
 trap cleanup EXIT
 
