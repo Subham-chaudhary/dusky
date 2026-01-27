@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Script Name: theme-activator.sh
-# Description: Manages 'dark'/'light' wallpaper directory states.
-#              - Resolves conflicts by moving 'light' to parent.
-#              - Renames candidate to 'active'.
-# Environment: Arch Linux / Hyprland (UWSM)
+# Script Name: fix_theme_dir.sh
+# Description: Enforces 'active_theme' directory state.
+#              - Migrates legacy 'active' -> 'active_theme'.
+#              - Resolves conflicts (Dark + Light) by attempting to move Light.
+#              - If Move fails, WARNS but CONTINUES to ensure Dark is activated.
+# Environment: Arch Linux / Hyprland / UWSM
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -13,11 +14,11 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-# Absolute Paths (Robustness)
+# Absolute Paths for Safety
 readonly BASE_DIR="${HOME}/Pictures/wallpapers"
 readonly PARENT_DIR="${HOME}/Pictures"
 
-# ANSI Colors (Visual Feedback)
+# ANSI Colors
 readonly C_GREEN=$'\033[0;32m'
 readonly C_BLUE=$'\033[0;34m'
 readonly C_YELLOW=$'\033[0;33m'
@@ -45,54 +46,70 @@ main() {
         log_err "Base directory not found: ${BASE_DIR}"
     fi
 
-    # Define targets using absolute paths
+    # Define State Targets
     local dir_dark="${BASE_DIR}/dark"
     local dir_light="${BASE_DIR}/light"
-    local dir_active="${BASE_DIR}/active"
+    local dir_target="${BASE_DIR}/active_theme"
+    local dir_legacy="${BASE_DIR}/active"
+
+    # --------------------------------------------------------------------------
+    # Phase 0: Legacy Migration (active -> active_theme)
+    # --------------------------------------------------------------------------
+    if [[ -d "${dir_legacy}" ]]; then
+        if [[ -d "${dir_target}" ]]; then
+            log_warn "Both 'active' and 'active_theme' exist. Cannot migrate automatically."
+            log_warn "Using existing 'active_theme' and ignoring 'active'."
+        else
+            log_info "Legacy directory 'active' detected. Renaming to 'active_theme'..."
+            mv "${dir_legacy}" "${dir_target}"
+            log_ok "Migration complete."
+        fi
+    fi
 
     # --------------------------------------------------------------------------
     # Phase 1: Conflict Resolution
-    # Rule: If BOTH exist, move 'light' to parent ($HOME/Pictures/)
+    # Logic: If BOTH exist, try to move 'light' out.
+    # CRITICAL FIX: If move fails, do NOT exit. Log WARN and proceed.
     # --------------------------------------------------------------------------
     if [[ -d "${dir_dark}" && -d "${dir_light}" ]]; then
         log_info "Conflict detected: Both 'dark' and 'light' exist."
 
-        # Safety Check: Prevent overwriting if ~/Pictures/light already exists
         if [[ -d "${PARENT_DIR}/light" ]]; then
-            log_err "Cannot move 'light' to parent: '${PARENT_DIR}/light' already exists."
+            log_warn "Destination conflict: '${PARENT_DIR}/light' already exists."
+            log_warn "Skipping move of 'light' folder to prevent data loss."
+            # We continue execution so 'dark' can still be renamed below.
+        else
+            mv "${dir_light}" "${PARENT_DIR}/"
+            log_ok "Moved 'light' to ${PARENT_DIR}/."
         fi
-
-        mv "${dir_light}" "${PARENT_DIR}/"
-        log_ok "Conflict resolved: Moved 'light' to ${PARENT_DIR}/."
     fi
 
     # --------------------------------------------------------------------------
     # Phase 2: Activation
-    # Rule: Rename 'dark' OR 'light' to 'active'
+    # Logic: Rename available candidate to 'active_theme'.
     # --------------------------------------------------------------------------
     
-    # Check 1: Is 'active' already occupied?
-    if [[ -d "${dir_active}" ]]; then
-        # If 'active' exists AND we have 'dark' or 'light' waiting, we have an ambiguous state.
-        if [[ -d "${dir_dark}" || -d "${dir_light}" ]]; then
-            log_warn "Ambiguous state: 'active' directory exists, but new candidates are also present."
-            log_warn "Please manually verify which theme should be active in ${BASE_DIR}."
-            exit 0
-        else
-            log_ok "Directory 'active' is already set. No pending candidates."
-            exit 0
+    # 2a. Check if target is already set
+    if [[ -d "${dir_target}" ]]; then
+        # If we have stragglers (e.g. we failed to move light, or dark reappeared)
+        if [[ -d "${dir_dark}" ]]; then
+             log_warn "Ambiguous state: 'active_theme' is set, but 'dark' also exists."
+             exit 0
         fi
+        log_ok "System is already in a valid state ('active_theme' exists)."
+        exit 0
     fi
 
-    # Check 2: Process candidates
+    # 2b. Perform Rename
+    # Priority is 'dark' (Default standard)
     if [[ -d "${dir_dark}" ]]; then
-        mv "${dir_dark}" "${dir_active}"
-        log_ok "Renamed 'dark' to 'active'."
+        mv "${dir_dark}" "${dir_target}"
+        log_ok "Activated: Renamed 'dark' to 'active_theme'."
     elif [[ -d "${dir_light}" ]]; then
-        mv "${dir_light}" "${dir_active}"
-        log_ok "Renamed 'light' to 'active'."
+        mv "${dir_light}" "${dir_target}"
+        log_ok "Activated: Renamed 'light' to 'active_theme'."
     else
-        log_warn "No 'dark' or 'light' directories found to process."
+        log_warn "No candidates ('dark' or 'light') found to activate."
     fi
 }
 
